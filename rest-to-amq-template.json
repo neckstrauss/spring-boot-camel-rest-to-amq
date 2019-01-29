@@ -1,0 +1,464 @@
+{
+  "apiVersion": "v1",
+  "kind": "Template",
+  "metadata": {
+    "annotations": {
+      "openshift.io/display-name": "Tempalte REST to AMQ with Spring Boot",
+      "openshift.io/provider-display-name": "Red Hat, Inc.",
+      "description": "Spring Boot, Camel REST DSL and AMQ QuickStart.",
+      "tags": "quickstart,java,springboot, rest, amq",
+      "iconClass": "icon-rh-integration",
+      "version": "1.0"
+    },
+    "name": "rh-avh-rest-to-amq"
+  },
+  "labels": {
+    "template": "rh-avh-rest-to-amq"
+  },
+  "parameters": [
+    {
+      "name": "APP_NAME",
+      "displayName": "Application Name",
+      "required": true,
+      "value": "rh-avh-rest-to-amq",
+      "description": "The name assigned to the application."
+    },
+    {
+      "name": "GIT_REPO",
+      "displayName": "Git Repository URL",
+      "required": true,
+      "description": "The URL of the repository with your application source code."
+    },
+    {
+      "name": "GIT_REF",
+      "displayName": "Git Reference",
+      "value": "master",
+      "description": "Set this to a branch name, tag or other ref of your repository if you are not using the default branch."
+    },
+    {
+      "name": "SERVICE_NAME",
+      "displayName": "Service Name",
+      "value": "rest-service-name",
+      "description": "Exposed service name."
+    },
+    {
+      "name": "REST_CONTEXT",
+      "displayName": "Contexto del servicio rest",
+      "required": true,
+      "value": "/context-rest",
+      "description": "Contexto con el cual se configurará el servicio rest"
+    },
+	{
+      "name": "REST_SERVICENAME",
+      "displayName": "Nombre del servicio ",
+      "required": true,
+      "value": "/service-name",
+      "description": "Nombre del servicio rest expuesto en el contexto"
+    },
+    {
+	  "name": "AMQ_HOST_NAME",
+	  "displayName": "ActiveMQ Broker Service",
+	  "required": true,
+	  "value": "broker-amq-tcp",
+	  "description": "Set this to the name of the TCP service of the ActiveMQ broker. "
+	},
+	{
+	  "name": "AMQ_PORT",
+	  "displayName": "ActiveMQ Broker Service Port",
+	  "required": true,
+	  "value": "61616",
+	  "description": "Set this to the port of the TCP service of the ActiveMQ broker. "
+	},
+	{
+	  "name": "AMQ_USERNAME",
+	  "displayName": "ActiveMQ Broker Username",
+	  "description": "The username used to authenticate with the ActiveMQ broker. "
+	},
+	{
+	  "name": "AMQ_PASSWORD",
+	  "displayName": "ActiveMQ Broker Password",
+	  "description": "The password used to authenticate with the ActiveMQ broker. Leave it empty if authentication is disabled."
+	},
+	{
+	  "name": "AMQ_QUEUENAME",
+	  "displayName": "ActiveMQ Queue Name",
+	  "required": true,
+	  "description": "The name of the queue that are going to use."
+	},
+	
+	
+    {
+      "name": "BUILDER_VERSION",
+      "displayName": "Builder version",
+      "value": "2.0",
+      "description": "The version of the FIS S2I builder image to use."
+    },
+    {
+      "name": "APP_VERSION",
+      "displayName": "Application Version",
+      "value": "2.2.64-SNAPSHOT",
+      "description": "The application version."
+    },
+    {
+      "name": "MAVEN_ARGS",
+      "displayName": "Maven Arguments",
+      "value": "package -DskipTests -Dfabric8.skip -e -B",
+      "description": "Arguments passed to mvn in the build."
+    },
+    {
+      "name": "MAVEN_ARGS_APPEND",
+      "displayName": "Extra Maven Arguments",
+      "description": "Extra arguments passed to mvn, e.g. for multi-module builds."
+    },
+    {
+      "name": "ARTIFACT_DIR",
+      "displayName": "Maven build directory",
+      "description": "Directory of the artifact to be built, e.g. for multi-module builds."
+    },
+    {
+      "name": "IMAGE_STREAM_NAMESPACE",
+      "displayName": "Image Stream Namespace",
+      "value": "openshift",
+      "required": true,
+      "description": "Namespace in which the Fuse ImageStreams are installed. These ImageStreams are normally installed in the openshift namespace. You should only need to modify this if you've installed the ImageStreams in a different namespace/project."
+    },
+    {
+      "name": "BUILD_SECRET",
+      "displayName": "Git Build Secret",
+      "generate": "expression",
+      "description": "The secret needed to trigger a build.",
+      "from": "[a-zA-Z0-9]{40}"
+    },
+    {
+      "name": "CPU_REQUEST",
+      "displayName": "CPU request",
+      "value": "0.2",
+      "required": true,
+      "description": "The amount of CPU to request."
+    },
+    {
+      "name": "MEMORY_REQUEST",
+      "displayName": "Memory request",
+      "value": "256Mi",
+      "required": true,
+      "description": "The amount of memory required for the container to run."
+    },
+    {
+      "name": "CPU_LIMIT",
+      "displayName": "CPU limit",
+      "value": "1.0",
+      "required": true,
+      "description": "The amount of CPU the container is limited to use."
+    },
+    {
+      "name": "MEMORY_LIMIT",
+      "displayName": "Memory limit",
+      "value": "256Mi",
+      "required": true,
+      "description": "The amount of memory the container is limited to use."
+    },
+    {
+      "name": "BUILD_MEMORY_REQUEST",
+      "displayName": "Build Memory request",
+      "value": "0.7G",
+      "required": true,
+      "description": "The amount of memory to request for builds."
+    },
+    {
+      "name": "BUILD_MEMORY_LIMIT",
+      "displayName": "Build Memory limit",
+      "value": "0.8G",
+      "required": true,
+      "description": "The amount of memory the build container is limited to use."
+    }
+  ],
+  "objects": [
+    {
+      "apiVersion": "v1",
+      "kind": "Route",
+      "metadata": {
+        "labels": {
+          "component": "${APP_NAME}",
+          "provider": "s2i",
+          "app": "${APP_NAME}",
+          "version": "${APP_VERSION}",
+          "group": "quickstarts"
+        },
+        "name": "${SERVICE_NAME}-route"
+      },
+      "spec": {
+        "to": {
+          "kind": "Service",
+          "name": "${SERVICE_NAME}"
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "annotations": {
+        },
+        "labels": {
+          "component": "${APP_NAME}",
+          "provider": "s2i",
+          "app": "${APP_NAME}",
+          "version": "${APP_VERSION}",
+          "group": "quickstarts"
+        },
+        "name": "${SERVICE_NAME}"
+      },
+      "spec": {
+        "clusterIP": "None",
+        "deprecatedPublicIPs": [],
+        "ports": [
+          {
+            "port": 8080,
+            "protocol": "TCP",
+            "targetPort": 8080
+          }
+        ],
+        "selector": {
+          "app": "${APP_NAME}",
+          "component": "${APP_NAME}",
+          "provider": "s2i",
+          "group": "quickstarts"
+        }
+      }
+    },
+    {
+      "kind": "ImageStream",
+      "apiVersion": "v1",
+      "metadata": {
+        "name": "${APP_NAME}",
+        "creationTimestamp": null,
+        "labels": {
+          "component": "${APP_NAME}",
+          "group": "quickstarts",
+          "app": "${APP_NAME}",
+          "provider": "s2i",
+          "version": "${APP_VERSION}"
+        }
+      },
+      "spec": {},
+      "status": {
+        "dockerImageRepository": ""
+      }
+    },
+    {
+      "kind": "BuildConfig",
+      "apiVersion": "v1",
+      "metadata": {
+        "name": "${APP_NAME}",
+        "creationTimestamp": null,
+        "labels": {
+          "component": "${APP_NAME}",
+          "group": "quickstarts",
+          "app": "${APP_NAME}",
+          "provider": "s2i",
+          "version": "${APP_VERSION}"
+        }
+      },
+      "spec": {
+        "triggers": [
+          {
+            "type": "GitHub",
+            "github": {
+              "secret": "${BUILD_SECRET}"
+            }
+          },
+          {
+            "type": "Generic",
+            "generic": {
+              "secret": "${BUILD_SECRET}"
+            }
+          },
+          {
+            "type": "ConfigChange"
+          },
+          {
+            "type": "ImageChange",
+            "imageChange": {}
+          }
+        ],
+        "source": {
+          "type": "Git",
+          "git": {
+            "uri": "${GIT_REPO}",
+            "ref": "${GIT_REF}"
+          }
+        },
+        "strategy": {
+          "type": "Source",
+          "sourceStrategy": {
+            "from": {
+              "kind": "ImageStreamTag",
+              "namespace": "${IMAGE_STREAM_NAMESPACE}",
+              "name": "fis-java-openshift:${BUILDER_VERSION}"
+            },
+            "forcePull": true,
+            "incremental": true,
+            "env": [
+              {
+                "name": "BUILD_LOGLEVEL",
+                "value": "5"
+              },
+              {
+                "name": "ARTIFACT_DIR",
+                "value": "${ARTIFACT_DIR}"
+              },
+              {
+                "name": "MAVEN_ARGS",
+                "value": "${MAVEN_ARGS}"
+              },
+              {
+                "name": "MAVEN_ARGS_APPEND",
+                "value": "${MAVEN_ARGS_APPEND}"
+              }
+            ]
+          }
+        },
+        "output": {
+          "to": {
+            "kind": "ImageStreamTag",
+            "name": "${APP_NAME}:latest"
+          }
+        },
+        "resources": {
+          "requests": {
+            "memory": "${BUILD_MEMORY_REQUEST}"
+          },
+          "limits": {
+            "memory": "${BUILD_MEMORY_LIMIT}"
+          }
+        }
+      },
+      "status": {
+        "lastVersion": 0
+      }
+    },
+    {
+      "kind": "DeploymentConfig",
+      "apiVersion": "v1",
+      "metadata": {
+        "name": "${APP_NAME}",
+        "creationTimestamp": null,
+        "labels": {
+          "component": "${APP_NAME}",
+          "group": "quickstarts",
+          "app": "${APP_NAME}",
+          "provider": "s2i",
+          "version": "${APP_VERSION}"
+        }
+      },
+      "spec": {
+        "triggers": [
+          {
+            "type": "ConfigChange"
+          },
+          {
+            "type": "ImageChange",
+            "imageChangeParams": {
+              "automatic": true,
+              "containerNames": [
+                "${APP_NAME}"
+              ],
+              "from": {
+                "kind": "ImageStreamTag",
+                "name": "${APP_NAME}:latest"
+              }
+            }
+          }
+        ],
+        "replicas": 1,
+        "selector": {
+          "component": "${APP_NAME}",
+          "deploymentconfig": "${APP_NAME}",
+          "group": "quickstarts",
+          "app": "${APP_NAME}",
+          "provider": "s2i",
+          "version": "${APP_VERSION}"
+        },
+        "template": {
+          "metadata": {
+            "creationTimestamp": null,
+            "labels": {
+              "component": "${APP_NAME}",
+              "deploymentconfig": "${APP_NAME}",
+              "group": "quickstarts",
+              "app": "${APP_NAME}",
+              "provider": "s2i",
+              "version": "${APP_VERSION}"
+            }
+          },
+          "spec": {
+            "containers": [
+              {
+                "name": "${APP_NAME}",
+                "image": "library/${APP_NAME}:latest",
+                "ports": [
+                  {
+                    "containerPort": 8080,
+                    "name": "http"
+                  },
+                  {
+                    "containerPort": 8778,
+                    "name": "jolokia"
+                  }
+                ],
+                "env" : [ {
+                  "name" : "KUBERNETES_NAMESPACE",
+                  "valueFrom" : {
+                    "fieldRef" : {
+                      "fieldPath" : "metadata.namespace"
+                    }
+                  }
+                } , 
+				{
+                  "name": "REST_CONTEXT",
+                  "value": "${REST_CONTEXT}"
+                }, 
+				{
+                  "name": "REST_SERVICENAME",
+                  "value": "${REST_SERVICENAME}"
+                }, 
+				{
+                  "name": "AMQ_HOSTNAME",
+                  "value": "${AMQ_HOST_NAME}"
+                }, 
+				{
+                  "name": "AMQ_PORT",
+                  "value": "${AMQ_PORT}"
+                }, 
+				{
+                  "name": "AMQ_QUEUENAME",
+                  "value": "${AMQ_QUEUENAME}"
+                }, 
+				{
+                  "name": "AMQ_USER",
+                  "value": "${AMQ_USERNAME}"
+                }, 
+				{
+                  "name": "AMQ_PASSWD",
+                  "value": "${AMQ_PASSWORD}"
+                }
+				
+				],
+                "resources": {
+                  "requests": {
+                    "cpu": "${CPU_REQUEST}",
+                    "memory": "${MEMORY_REQUEST}"
+                  },
+                  "limits": {
+                    "cpu": "${CPU_LIMIT}",
+                    "memory": "${MEMORY_LIMIT}"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
